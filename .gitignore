@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+ # ---- Project-specific additions ----
+
+# SQLite databases (generic — not just Django's default name)
+*.db
+*.sqlite
+*.sqlite3
+
+# Real config with actual secrets/values (keep the .example version tracked)
+config.yaml
+
+# OS junk files
+.DS_Store
+Thumbs.db
+
+# VS Code personal settings (keep extensions.json tracked — that one's shared)
+.vscode/settings.json
