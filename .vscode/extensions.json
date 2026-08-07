@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-azuretools.vscode-docker",
+    "qwtel.sqlite-viewer",
+    "eamodio.gitlens",
+    "redhat.vscode-yaml",
+    "wholroyd.jinja"
+  ]
+}
