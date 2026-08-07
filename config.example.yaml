@@ -1,0 +1,27 @@
+# Domains authorized for scanning — must match an 'authorized=true' row in the assets table
+targets:
+  domains:
+    - example.com
+
+# How often the orchestrator runs a full scan cycle
+schedule:
+  interval_hours: 1
+
+# Risk scoring thresholds — determines what counts as "critical" for alerting
+risk_thresholds:
+  critical: 9.0
+  high: 7.0
+  medium: 4.0
+
+# Which scan tools are enabled
+scanners:
+  subfinder: true
+  amass: true
+  nmap: true
+  nuclei: true
+
+# Alert routing
+notifications:
+  channels:
+    - slack
+  min_severity_to_alert: high
