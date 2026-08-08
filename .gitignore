@@ -232,3 +232,6 @@ Thumbs.db
 
 # VS Code personal settings (keep extensions.json tracked — that one's shared)
 .vscode/settings.json
+*_raw.xml
+*_raw.jsonl
+*_raw.txt
