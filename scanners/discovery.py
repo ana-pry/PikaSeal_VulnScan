@@ -22,7 +22,7 @@ log = logging.getLogger("scanners.discovery")
 
 # Where results.db lives. Overridable via env so it matches the .env config the
 # rest of the team uses; falls back to the repo-relative default.
-RESULTS_DB = os.environ.get("RESULTS_DB", "db/results.db")
+RESULTS_DB = os.environ.get("DB_PATH", "db/results.db")
 
 
 def _clean_hosts(text: str, domain: str) -> set[str]:
