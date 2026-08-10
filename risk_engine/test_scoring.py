@@ -16,19 +16,19 @@ from risk_engine.scoring import _band, compute_risk, score_findings
 # --- pure scoring logic -----------------------------------------------------
 
 def test_band_boundaries():
-    assert _band(95) == "critical"
-    assert _band(90) == "critical"
-    assert _band(89.9) == "high"
-    assert _band(70) == "high"
-    assert _band(40) == "medium"
-    assert _band(39.9) == "low"
+    assert _band(9.5) == "critical"
+    assert _band(9.0) == "critical"
+    assert _band(8.9) == "high"
+    assert _band(7.0) == "high"
+    assert _band(4.0) == "medium"
+    assert _band(3.9) == "low"
     assert _band(0) == "low"
 
 
 def test_compute_risk_kev_floor():
     # A low-CVSS, low-EPSS finding that IS in KEV must still land critical,
     # because active exploitation overrides theoretical scores.
-    assert compute_risk(cvss=2.0, epss=0.01, kev=True) >= 90
+    assert compute_risk(cvss=2.0, epss=0.01, kev=True) >= 9.0
     assert _band(compute_risk(2.0, 0.01, True)) == "critical"
 
 

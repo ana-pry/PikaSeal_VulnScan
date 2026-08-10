@@ -20,36 +20,74 @@ so they're scored from what we have (no CVSS/EPSS/KEV) rather than dropped.
 """
 from __future__ import annotations
 
+import logging
+
 from .cvss import get_cvss_scores
 from .epss import get_epss_scores
 from .kev import get_kev_set
 
-# Composite weights (tunable). Must sum to 1.0.
-W_CVSS = 0.5
-W_EPSS = 0.3
-W_KEV = 0.2
+log = logging.getLogger("risk_engine.scoring")
 
-KEV_FLOOR = 90.0  # a KEV finding is never scored below this
+# --- scoring parameters (config-driven, with defaults) ----------------------
+# risk_score is on a 0-10 scale (matching CVSS and the config's risk_thresholds).
+# All params live under config.yaml's `risk_thresholds` section: the critical/
+# high/medium band cutoffs, plus nested `weights` and `kev_floor`. A missing or
+# broken config falls back to these defaults, so scoring never depends on the
+# file being present. Loaded once at import.
+
+_DEFAULT_WEIGHTS = {"cvss": 0.5, "epss": 0.3, "kev": 0.2}
+_DEFAULT_KEV_FLOOR = 9.0
+_DEFAULT_BANDS = {"critical": 9.0, "high": 7.0, "medium": 4.0}
+
+
+def _load_scoring_config(path: str = "config.yaml") -> dict:
+    """Read the `risk_thresholds` section from config.yaml. Missing/broken -> {}."""
+    try:
+        import yaml
+        with open(path) as f:
+            return (yaml.safe_load(f) or {}).get("risk_thresholds", {}) or {}
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        log.exception("could not parse %s; using default scoring params", path)
+        return {}
+
+
+_cfg = _load_scoring_config()
+# band cutoffs are the top-level critical/high/medium keys in risk_thresholds
+_bands = {**_DEFAULT_BANDS, **{k: _cfg[k] for k in ("critical", "high", "medium") if k in _cfg}}
+_weights = {**_DEFAULT_WEIGHTS, **(_cfg.get("weights") or {})}
+
+# Composite weights (should sum to 1.0).
+W_CVSS = float(_weights["cvss"])
+W_EPSS = float(_weights["epss"])
+W_KEV = float(_weights["kev"])
+KEV_FLOOR = float(_cfg.get("kev_floor", _DEFAULT_KEV_FLOOR))  # KEV never scores below this
+# risk_score thresholds for each severity band (0-10 scale).
+BAND_CRITICAL = float(_bands["critical"])
+BAND_HIGH = float(_bands["high"])
+BAND_MEDIUM = float(_bands["medium"])
 
 
 def _band(risk_score: float) -> str:
-    """Map a 0-100 risk score to the findings.severity CHECK set."""
-    if risk_score >= 90:
+    """Map a 0-10 risk score to the findings.severity CHECK set."""
+    if risk_score >= BAND_CRITICAL:
         return "critical"
-    if risk_score >= 70:
+    if risk_score >= BAND_HIGH:
         return "high"
-    if risk_score >= 40:
+    if risk_score >= BAND_MEDIUM:
         return "medium"
     return "low"
 
 
 def compute_risk(cvss: float, epss: float, kev: bool) -> float:
-    """Weighted composite in 0-100, with a KEV hard floor. Pure + unit-testable."""
-    score = 100.0 * (
-        W_CVSS * (cvss / 10.0)   # cvss is 0-10
-        + W_EPSS * epss          # epss is already 0-1
+    """Weighted composite on a 0-10 scale, with a KEV hard floor. Pure + testable."""
+    composite = (
+        W_CVSS * (cvss / 10.0)   # cvss 0-10 -> 0-1
+        + W_EPSS * epss          # epss already 0-1
         + W_KEV * (1.0 if kev else 0.0)
-    )
+    )                            # composite is 0-1
+    score = 10.0 * composite     # scale to 0-10
     if kev:
         score = max(score, KEV_FLOOR)
     return round(score, 2)
