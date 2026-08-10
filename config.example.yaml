@@ -12,6 +12,11 @@ risk_thresholds:
   critical: 9.0
   high: 7.0
   medium: 4.0
+  weights:          # composite weights, should sum to 1.0
+    cvss: 0.5
+    epss: 0.3
+    kev: 0.2
+  kev_floor: 9.0    # a KEV-listed CVE never scores below this
 
 # Which scan tools are enabled
 scanners:
