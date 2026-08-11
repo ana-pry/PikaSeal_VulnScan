@@ -93,11 +93,42 @@ def compute_risk(cvss: float, epss: float, kev: bool) -> float:
     return round(score, 2)
 
 
+# Score for non-CVE findings, derived from nuclei's own template severity. This
+# is the industry-standard fallback: when there's no CVE to look up CVSS/EPSS/KEV
+# for (misconfigs, weak TLS, tech-detect), trust the scanner's severity rating.
+# Values are chosen so _band() maps each back to the matching severity band.
+_SEVERITY_SCORE = {
+    "critical": 9.0,
+    "high": 7.0,
+    "medium": 5.0,
+    "low": 3.0,
+    "info": 1.0,
+    "unknown": 0.0,
+}
+
+
+def _is_real_cve(cve_id: str) -> bool:
+    return bool(cve_id) and cve_id.upper().startswith("CVE-")
+
+
+def _score_non_cve(nuclei_severity: str | None) -> float:
+    """Map a nuclei template severity to a 0-10 risk score."""
+    sev = (nuclei_severity or "unknown").lower()
+    return _SEVERITY_SCORE.get(sev, 0.0)
+
+
 def score_findings(raw_findings: list[dict]) -> list[dict]:
     """Enrich raw nuclei findings with CVSS/EPSS/KEV and a composite risk score.
 
-    Batches the three lookups once for all findings (not per-finding), then scores
-    each. Returns a new list; input dicts are not mutated.
+    Two paths:
+      - Real CVE (cve_id like CVE-YYYY-N): CVSS+EPSS+KEV composite.
+      - No CVE (misconfig, weak TLS, tech-detect -> cve_id is a template-id):
+        fall back to nuclei's own template severity, since there's nothing to
+        look up. This keeps a weak-cipher-suites finding ranked above a cosmetic
+        missing-header one, instead of flooring everything to 0.
+
+    Batches the CVE lookups once for all findings. Returns a new list; input
+    dicts are not mutated.
     """
     if not raw_findings:
         return []
@@ -110,10 +141,15 @@ def score_findings(raw_findings: list[dict]) -> list[dict]:
     enriched: list[dict] = []
     for f in raw_findings:
         cve = (f.get("cve_id") or "").upper()
-        cvss = cvss_map.get(cve, 0.0)
-        epss = epss_map.get(cve, 0.0)
-        kev = cve in kev_set
-        risk = compute_risk(cvss, epss, kev)
+        if _is_real_cve(cve):
+            cvss = cvss_map.get(cve, 0.0)
+            epss = epss_map.get(cve, 0.0)
+            kev = cve in kev_set
+            risk = compute_risk(cvss, epss, kev)
+        else:
+            # No CVE -> score from nuclei's own severity rating.
+            cvss, epss, kev = 0.0, 0.0, False
+            risk = _score_non_cve(f.get("severity"))
 
         enriched.append({
             **f,                       # keep cve_id, description, original severity fields

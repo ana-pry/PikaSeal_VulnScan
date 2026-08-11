@@ -69,7 +69,7 @@ def test_score_findings_offline(monkeypatch):
     assert log4j["severity"] == "critical"
     assert log4j["description"] == "Log4Shell"   # original fields preserved
 
-    # non-CVE finding: no enrichment data, scores low, still CHECK-safe severity.
+    # non-CVE 'info' finding: no CVE lookup, scored from nuclei severity (info->low).
     waf = out[1]
     assert waf["cvss_score"] == 0.0
     assert waf["epss_score"] == 0.0
@@ -83,6 +83,29 @@ def test_score_findings_offline(monkeypatch):
     required = {"cve_id", "description", "cvss_score", "epss_score",
                 "kev_flag", "risk_score", "severity"}
     assert all(required <= set(f) for f in out)
+
+
+def test_non_cve_findings_ranked_by_nuclei_severity(monkeypatch):
+    # No network needed: none of these are real CVEs, so no lookups fire.
+    monkeypatch.setattr(scoring, "get_cvss_scores", lambda ids: {})
+    monkeypatch.setattr(scoring, "get_epss_scores", lambda ids: {})
+    monkeypatch.setattr(scoring, "get_kev_set", lambda: set())
+
+    raw = [
+        {"cve_id": "weak-cipher-suites",  "severity": "medium", "description": "Weak TLS ciphers"},
+        {"cve_id": "http-missing-headers", "severity": "info",   "description": "Missing headers"},
+        {"cve_id": "some-high-misconfig",  "severity": "high",   "description": "Serious misconfig"},
+    ]
+    out = {f["cve_id"]: f for f in score_findings(raw)}
+
+    # A weak-TLS medium finding must NOT rank the same as a cosmetic info one.
+    assert out["weak-cipher-suites"]["severity"] == "medium"
+    assert out["http-missing-headers"]["severity"] == "low"
+    assert out["some-high-misconfig"]["severity"] == "high"
+    # and the scores order correctly
+    assert (out["some-high-misconfig"]["risk_score"]
+            > out["weak-cipher-suites"]["risk_score"]
+            > out["http-missing-headers"]["risk_score"])
 
 
 def test_score_findings_empty():
