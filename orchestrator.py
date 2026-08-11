@@ -25,6 +25,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d+$", re.IGNORECASE)
+TLS_KEYWORDS = ("tls", "ssl", "cipher", "certificate")
 
 
 def _load_config(config_path: str = "config.yaml") -> dict:
@@ -59,11 +60,18 @@ def _finish_scan_run(conn: sqlite3.Connection, run_id: int, status: str) -> None
 
 
 def _resolve_ip(domain: str) -> str | None:
+    """
+    BUG 1 FIX: prefer IPv4 so nmap (invoked without -6) can actually scan the
+    result. Only fall back to any address family if there's no A record.
+    """
     try:
-        return socket.getaddrinfo(domain, None)[0][4][0]
-    except socket.gaierror as e:
-        logger.warning(f"Could not resolve {domain}: {e}")
-        return None
+        return socket.getaddrinfo(domain, None, family=socket.AF_INET)[0][4][0]
+    except socket.gaierror:
+        try:
+            return socket.getaddrinfo(domain, None)[0][4][0]
+        except socket.gaierror as e:
+            logger.warning(f"Could not resolve {domain}: {e}")
+            return None
 
 
 def _get_authorized_assets(conn: sqlite3.Connection) -> list[dict]:
@@ -71,6 +79,14 @@ def _get_authorized_assets(conn: sqlite3.Connection) -> list[dict]:
     Only authorized=1 assets are scanned. New assets from discover_assets
     default to authorized=0 and require explicit authorization before
     run_nmap/run_nuclei ever touch them.
+
+    # TODO(team decision — do not auto-implement): there is currently no path
+    # to promote an asset to authorized=1, so out of the box nothing gets
+    # scanned until someone edits the DB by hand. Decide the authorization
+    # model — e.g. auto-authorize domains explicitly listed in
+    # config.targets, add an authorized-domains allowlist in config.yaml, or
+    # require a manual review/approval step — before relying on this in
+    # production.
     """
     rows = conn.execute(
         "SELECT id, domain, ip_address FROM assets WHERE authorized = 1"
@@ -102,9 +118,48 @@ def _insert_port_finding(conn: sqlite3.Connection, run_id: int, asset_id: int, p
     )
 
 
-def _insert_vuln_finding(conn: sqlite3.Connection, run_id: int, finding: dict) -> None:
+def _classify_finding_type(finding: dict) -> str:
+    """
+    BUG 3 FIX: classify TLS/SSL findings as 'weak_tls' before falling back
+    to 'misconfig'. Order: real CVE id -> weak_tls keyword match -> misconfig.
+    """
     cve_id = finding.get("cve_id")
-    finding_type = "cve" if cve_id and CVE_PATTERN.match(cve_id) else "misconfig"
+    if cve_id and CVE_PATTERN.match(cve_id):
+        return "cve"
+
+    haystack = f"{cve_id or ''} {finding.get('description') or ''}".lower()
+    if any(keyword in haystack for keyword in TLS_KEYWORDS):
+        return "weak_tls"
+
+    return "misconfig"
+
+
+def _dedupe_findings(findings: list[dict]) -> list[dict]:
+    """
+    BUG 4 FIX: collapse duplicate vuln findings to one row per
+    (asset_id, finding_type, cve_id). Keeps the highest risk_score among
+    duplicates as the representative row.
+    """
+    deduped: dict[tuple, dict] = {}
+    for finding in findings:
+        finding_type = _classify_finding_type(finding)
+        key = (finding.get("asset_id"), finding_type, finding.get("cve_id"))
+
+        existing = deduped.get(key)
+        if existing is None:
+            deduped[key] = finding
+        else:
+            existing_score = existing.get("risk_score") or 0
+            new_score = finding.get("risk_score") or 0
+            if new_score > existing_score:
+                deduped[key] = finding
+
+    return list(deduped.values())
+
+
+def _insert_vuln_finding(conn: sqlite3.Connection, run_id: int, finding: dict) -> None:
+    finding_type = _classify_finding_type(finding)
+    cve_id = finding.get("cve_id")
 
     conn.execute(
         """INSERT INTO findings
@@ -136,8 +191,12 @@ def run_scan_cycle() -> None:
 
     try:
         # 1. Discovery
+        # BUG 2 FIX: include each configured root domain itself, not just
+        # discovered subdomains, so a leaf host with no subdomains still
+        # gets scanned.
         all_subdomains: list[str] = []
         for domain in domains:
+            all_subdomains.append(domain)
             subdomains = discover_assets(domain)
             all_subdomains.extend(subdomains)
 
@@ -171,6 +230,9 @@ def run_scan_cycle() -> None:
             scored["asset_id"] = raw["asset_id"]
             scored["target"] = raw["target"]
 
+        # BUG 4 FIX: de-duplicate after scoring, before persisting.
+        scored_findings = _dedupe_findings(scored_findings)
+
         for finding in scored_findings:
             _insert_vuln_finding(conn, run_id, finding)
         conn.commit()
@@ -192,4 +254,3 @@ def run_scan_cycle() -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     run_scan_cycle()
-    
