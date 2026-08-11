@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+  <h1>Overview</h1>
+
+  <div>
+    <div class="card">
+      <div class="num">{{ asset_count }}</div>
+      <div class="lbl">Assets ({{ authorized_count }} authorized)</div>
+    </div>
+    <div class="card">
+      <div class="num">{{ finding_count }}</div>
+      <div class="lbl">Open findings</div>
+    </div>
+    <div class="card">
+      <div class="num">{{ kev_count }}</div>
+      <div class="lbl">KEV-flagged</div>
+    </div>
+  </div>
+
+  <h2>Open findings by severity</h2>
+  <table>
+    <tr><th>Severity</th><th>Count</th></tr>
+    {% for row in severity_breakdown %}
+      <tr>
+        <td class="sev-{{ row.severity }}">{{ row.severity }}</td>
+        <td>{{ row.n }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="2">No findings yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>Recent scan runs</h2>
+  <table>
+    <tr><th>ID</th><th>Started</th><th>Finished</th><th>Status</th><th>Notes</th></tr>
+    {% for scan in recent_scans %}
+      <tr>
+        <td>{{ scan.id }}</td>
+        <td>{{ scan.started_at }}</td>
+        <td>{{ scan.finished_at or '—' }}</td>
+        <td>{{ scan.status }}</td>
+        <td>{{ scan.notes or '' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">No scan runs yet.</td></tr>
+    {% endfor %}
+  </table>
+{% endblock %}
