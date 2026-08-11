@@ -1,52 +1,76 @@
 {% extends "base.html" %}
 {% block title %}Findings{% endblock %}
 {% block content %}
-  <h1>Open findings</h1>
-  <p>
-    Sort by:
-    <a href="?sort=risk_score">Risk score</a> |
-    <a href="?sort=severity">Severity</a> |
-    <a href="?sort=discovered">Newest</a>
-    &nbsp;&nbsp;<em>(current: {{ sort }})</em>
-  </p>
+  <section class="hero compact">
+    <div>
+      <p class="eyebrow">Findings inventory</p>
+      <h1>Open findings</h1>
+      <p class="subtle">Prioritize the most dangerous issues first. KEV-tagged and high severity items are highlighted.</p>
+    </div>
+  </section>
 
-  <table>
-    <tr>
-      <th>ID</th>
-      <th>Asset</th>
-      <th>Type</th>
-      <th>Port / Service</th>
-      <th>CVE</th>
-      <th>CVSS</th>
-      <th>Risk</th>
-      <th>Severity</th>
-      <th>Description</th>
-      <th>Discovered</th>
-    </tr>
-    {% for f in findings %}
-      <tr>
-        <td>{{ f.id }}</td>
-        <td>
-          {{ f.domain or '—' }}
-          {% if f.ip_address %}<br><small>{{ f.ip_address }}</small>{% endif %}
-        </td>
-        <td>{{ f.finding_type }}</td>
-        <td>
-          {% if f.port %}{{ f.port }}{% endif %}
-          {% if f.service %} / {{ f.service }}{% endif %}
-        </td>
-        <td>
-          {{ f.cve_id or '' }}
-          {% if f.kev_flag %} <span class="kev">KEV</span>{% endif %}
-        </td>
-        <td>{{ '%.1f'|format(f.cvss_score) if f.cvss_score is not none else '' }}</td>
-        <td>{{ '%.2f'|format(f.risk_score) if f.risk_score is not none else '' }}</td>
-        <td class="sev-{{ f.severity }}">{{ f.severity }}</td>
-        <td>{{ f.description or '' }}</td>
-        <td>{{ f.discovered_at }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="10">No open findings.</td></tr>
-    {% endfor %}
-  </table>
+  <div class="toolbar">
+    <div class="sort-links">
+      <a href="?sort=risk_score" class="{% if sort == 'risk_score' %}active{% endif %}">Risk score</a>
+      <a href="?sort=severity" class="{% if sort == 'severity' %}active{% endif %}">Severity</a>
+      <a href="?sort=discovered" class="{% if sort == 'discovered' %}active{% endif %}">Newest</a>
+    </div>
+    <span>Showing {{ findings|length }} open findings</span>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <span>Findings table</span>
+      <span class="muted">Current sort: {{ sort }}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Asset</th>
+            <th>Type</th>
+            <th>Port / Service</th>
+            <th>CVE</th>
+            <th>CVSS</th>
+            <th>Risk</th>
+            <th>Severity</th>
+            <th>Description</th>
+            <th>Discovered</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in findings %}
+            <tr>
+              <td>#{{ f.id }}</td>
+              <td>
+                <strong>{{ f.domain or '—' }}</strong>
+                {% if f.ip_address %}<br><span class="subtle">{{ f.ip_address }}</span>{% endif %}
+              </td>
+              <td>{{ f.finding_type }}</td>
+              <td>
+                {% if f.port %}{{ f.port }}{% endif %}
+                {% if f.service %} / {{ f.service }}{% endif %}
+              </td>
+              <td>
+                <div class="badge-row">
+                  {% if f.cve_id %}<span class="badge">{{ f.cve_id }}</span>{% endif %}
+                  {% if f.kev_flag %}<span class="badge kev">KEV</span>{% endif %}
+                </div>
+              </td>
+              <td>{{ '%.1f'|format(f.cvss_score) if f.cvss_score is not none else '—' }}</td>
+              <td>{{ '%.2f'|format(f.risk_score) if f.risk_score is not none else '—' }}</td>
+              <td>
+                <span class="badge {{ f.severity or 'low' }}">{{ (f.severity or 'unknown') | title }}</span>
+              </td>
+              <td>{{ f.description or '—' }}</td>
+              <td>{{ f.discovered_at }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="10" class="empty">No open findings.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 {% endblock %}
