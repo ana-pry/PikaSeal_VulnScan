@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Overview{% endblock %}
 {% block content %}
-  <h1>Overview</h1>
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Live exposure overview</p>
+      <h1>Security posture at a glance</h1>
+      <p class="subtle">Track your environment at a glance, identify hotspots, and keep momentum on remediation.</p>
+    </div>
+    <a class="pill" href="{{ url_for('findings') }}">Review open findings</a>
+  </section>
 
-  <div>
+  <section class="stats-grid">
     <div class="card">
       <div class="num">{{ asset_count }}</div>
-      <div class="lbl">Assets ({{ authorized_count }} authorized)</div>
+      <div class="lbl">Assets tracked</div>
+    </div>
+    <div class="card">
+      <div class="num">{{ authorized_count }}</div>
+      <div class="lbl">Authorized assets</div>
     </div>
     <div class="card">
       <div class="num">{{ finding_count }}</div>
@@ -14,36 +25,59 @@
     </div>
     <div class="card">
       <div class="num">{{ kev_count }}</div>
-      <div class="lbl">KEV-flagged</div>
+      <div class="lbl">KEV-flagged findings</div>
     </div>
-  </div>
+  </section>
 
-  <h2>Open findings by severity</h2>
-  <table>
-    <tr><th>Severity</th><th>Count</th></tr>
-    {% for row in severity_breakdown %}
-      <tr>
-        <td class="sev-{{ row.severity }}">{{ row.severity }}</td>
-        <td>{{ row.n }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="2">No findings yet.</td></tr>
-    {% endfor %}
-  </table>
+  <section class="content-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <span>Open findings by severity</span>
+        <span class="muted">Priority snapshot</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Severity</th><th>Count</th></tr>
+          </thead>
+          <tbody>
+            {% for row in severity_breakdown %}
+              <tr>
+                <td class="sev-{{ row.severity }}">{{ row.severity | title }}</td>
+                <td>{{ row.n }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2" class="empty">No findings yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
 
-  <h2>Recent scan runs</h2>
-  <table>
-    <tr><th>ID</th><th>Started</th><th>Finished</th><th>Status</th><th>Notes</th></tr>
-    {% for scan in recent_scans %}
-      <tr>
-        <td>{{ scan.id }}</td>
-        <td>{{ scan.started_at }}</td>
-        <td>{{ scan.finished_at or '—' }}</td>
-        <td>{{ scan.status }}</td>
-        <td>{{ scan.notes or '' }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="5">No scan runs yet.</td></tr>
-    {% endfor %}
-  </table>
+    <article class="panel">
+      <div class="panel-header">
+        <span>Recent scan runs</span>
+        <span class="muted">Latest activity</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Started</th><th>Status</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            {% for scan in recent_scans %}
+              <tr>
+                <td>#{{ scan.id }}</td>
+                <td>{{ scan.started_at }}</td>
+                <td>{{ scan.status | title }}</td>
+                <td>{{ scan.notes or '—' }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="empty">No scan runs yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </section>
 {% endblock %}
