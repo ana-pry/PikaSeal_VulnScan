@@ -5,15 +5,25 @@ from flask import Flask, render_template, request
 app = Flask(__name__)
 
 DB_PATH = Path(__file__).resolve().parent.parent / "db" / "results.db"
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "db" / "schema.sql"
+
+
+def ensure_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.executescript(SCHEMA_PATH.read_text())
+        conn.commit()
+    finally:
+        conn.close()
+
+
+ensure_db()
 
 
 def get_db():
-    """Read-only connection — SQLite rejects writes at the driver level."""
-    conn = sqlite3.connect(
-        f"file:{DB_PATH}?mode=ro",
-        uri=True,
-        detect_types=sqlite3.PARSE_DECLTYPES,
-    )
+    """Open a read-write SQLite connection so the dashboard works locally."""
+    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
     return conn
 
