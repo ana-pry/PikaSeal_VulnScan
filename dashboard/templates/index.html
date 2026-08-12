@@ -1,83 +1,284 @@
 {% extends "base.html" %}
 {% block title %}Overview{% endblock %}
+
+{% block extra_style %}
+    .fix-first {
+      display: flex;
+      gap: 1.1rem;
+      align-items: flex-start;
+      padding: 1.15rem 1.25rem;
+      border-radius: 20px;
+      background: var(--sev-critical-bg);
+      margin-bottom: 1rem;
+    }
+    .fix-first .mark {
+      width: 2.6rem; height: 2.6rem; flex: none;
+      border-radius: 50%;
+      background: var(--surface);
+      color: var(--sev-critical-text);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.15rem;
+    }
+    .fix-first .body { flex: 1; min-width: 0; }
+    .fix-first .kicker {
+      text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem;
+      font-weight: 800; color: var(--sev-critical-text); margin: 0 0 0.3rem;
+    }
+    .fix-first h2 { margin: 0 0 0.35rem; font-size: 1.15rem; }
+    .fix-first .why { margin: 0 0 0.5rem; color: var(--text); line-height: 1.5; }
+    .fix-first .fix { margin: 0 0 0.75rem; color: var(--muted); line-height: 1.5; }
+    .fix-first .fix strong { color: var(--text); }
+    .fix-first .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+    .fix-first.clear { background: var(--sage-tint); }
+    .fix-first.clear .mark { color: var(--sev-low-text); }
+    .fix-first.clear .kicker { color: var(--sev-low-text); }
+
+    .gauge-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .gauge-wrap { position: relative; width: 100%; max-width: 230px; margin: 0.25rem auto 0; }
+    .gauge-wrap svg { display: block; width: 100%; height: auto; }
+    .gauge-value {
+      position: absolute; left: 50%; top: 66%; transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .gauge-value .num { font-size: 2.1rem; font-weight: 800; line-height: 1; }
+    .gauge-value .grade {
+      display: inline-block; margin-top: 0.3rem;
+      padding: 0.15rem 0.55rem; border-radius: 999px;
+      font-weight: 800; font-size: 0.85rem;
+    }
+    .gauge-scale { display: flex; justify-content: space-between; width: 100%; max-width: 230px; margin: 0.15rem auto 0; color: var(--soft); font-size: 0.78rem; }
+    .gauge-note { color: var(--muted); font-size: 0.88rem; margin-top: 0.6rem; line-height: 1.5; }
+
+    .sev-bar { display: flex; width: 100%; height: 0.85rem; border-radius: 999px; overflow: hidden; background: var(--surface-2); margin-bottom: 0.85rem; }
+    .sev-bar a { display: block; height: 100%; }
+    .sev-legend { display: flex; flex-direction: column; gap: 0.55rem; }
+    .sev-legend .row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.5rem 0.65rem; border-radius: 12px; border: 1px solid var(--border);
+    }
+    .sev-legend .row:hover { background: var(--surface-2); }
+    .sev-legend .n { font-weight: 800; }
+
+    .issue-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .issue-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 14px;
+    }
+    .issue-row:hover { background: var(--surface-2); }
+    .issue-row .who { min-width: 0; }
+    .issue-row .who strong { display: block; font-size: 0.92rem; }
+    .issue-row .who span { color: var(--muted); font-size: 0.82rem; }
+    .issue-row .score { font-weight: 800; color: var(--blue-dark); white-space: nowrap; }
+
+    .activity-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-row .meta { flex: 1; min-width: 0; font-size: 0.88rem; }
+    .activity-row .meta .id { font-weight: 700; }
+    .activity-row .meta .when { color: var(--muted); }
+    .activity-bar { width: 90px; height: 0.55rem; border-radius: 999px; background: var(--surface-2); flex: none; overflow: hidden; }
+    .activity-bar span { display: block; height: 100%; background: var(--blue); border-radius: 999px; }
+
+    .add-target-form { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .add-target-form input {
+      flex: 1 1 260px;
+      min-width: 0;
+      padding: 0.7rem 0.9rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    .add-target-form input:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .add-target-msg.error {
+      margin: -0.2rem 0 0.7rem;
+      color: var(--sev-critical-text);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+{% endblock %}
+
 {% block content %}
   <section class="hero">
     <div>
       <p class="eyebrow">Live exposure overview</p>
       <h1>Security posture at a glance</h1>
-      <p class="subtle">Track your environment at a glance, identify hotspots, and keep momentum on remediation.</p>
+      <p class="subtle">A plain-English summary of what's exposed right now, what matters most, and where to go to fix it.</p>
     </div>
-    <a class="pill" href="{{ url_for('findings') }}">Review open findings</a>
+    <a class="btn ghost" href="{{ url_for('findings') }}">Review all findings</a>
   </section>
 
+  {% if top_finding %}
+    <section class="fix-first">
+      <div class="mark">!</div>
+      <div class="body">
+        <p class="kicker">Fix this first</p>
+        <h2>
+          {% if top_finding.finding_type == 'cve' %}
+            {{ top_finding.cve_id }} on {{ top_finding.domain or 'an unnamed asset' }}
+          {% elif top_finding.finding_type == 'open_port' %}
+            Port {{ top_finding.port }}{% if top_finding.service %} ({{ top_finding.service }}){% endif %} open on {{ top_finding.domain or 'an unnamed asset' }}
+          {% elif top_finding.finding_type == 'weak_tls' %}
+            Weak encryption on {{ top_finding.domain or 'an unnamed asset' }}
+          {% else %}
+            Configuration issue on {{ top_finding.domain or 'an unnamed asset' }}
+          {% endif %}
+        </h2>
+        <p class="why">{{ top_finding.guidance.why }}</p>
+        <p class="fix"><strong>How to fix it:</strong> {{ top_finding.guidance.fix }}</p>
+        <div class="actions">
+          <span class="badge {{ top_finding.severity or 'low' }}">{{ (top_finding.severity or 'unknown') | title }}</span>
+          {% if top_finding.kev_flag %}<span class="badge kev">Actively exploited</span>{% endif %}
+          <a class="btn" href="{{ url_for('findings', highlight=top_finding.id, sort='risk_score') }}#finding-{{ top_finding.id }}">View &amp; fix this</a>
+        </div>
+      </div>
+    </section>
+  {% else %}
+    <section class="fix-first clear">
+      <div class="mark">✓</div>
+      <div class="body">
+        <p class="kicker">Nothing urgent</p>
+        <h2>No open findings right now</h2>
+        <p class="why">Your last scan didn't turn up anything that needs attention. Keep scans running on a schedule to stay ahead of new issues.</p>
+      </div>
+    </section>
+  {% endif %}
+
   <section class="stats-grid">
-    <div class="card">
+    <div class="stat-card">
       <div class="num">{{ asset_count }}</div>
       <div class="lbl">Assets tracked</div>
     </div>
-    <div class="card">
+    <div class="stat-card">
       <div class="num">{{ authorized_count }}</div>
       <div class="lbl">Authorized assets</div>
     </div>
-    <div class="card">
+    <div class="stat-card">
       <div class="num">{{ finding_count }}</div>
       <div class="lbl">Open findings</div>
     </div>
-    <div class="card">
+    <div class="stat-card">
       <div class="num">{{ kev_count }}</div>
-      <div class="lbl">KEV-flagged findings</div>
+      <div class="lbl">Actively exploited (KEV)</div>
     </div>
+  </section>
+
+  <section class="panel add-target" style="margin-bottom: 1.25rem;">
+    <div class="panel-header">
+      <span>Add a website to track</span>
+      <span class="muted">New targets need to be authorized before they're scanned</span>
+    </div>
+    {% if target_error %}<p class="add-target-msg error">{{ target_error }}</p>{% endif %}
+    <form class="add-target-form" action="{{ url_for('add_asset') }}" method="post">
+      <input type="text" name="domain" placeholder="yourbusiness.com" autocomplete="off" required>
+      <button type="submit" class="btn">Add target</button>
+    </form>
+    <p class="subtle" style="margin-top: 0.6rem;">Enter just the domain, no "https://" needed. It'll show up on the <a href="{{ url_for('assets') }}" style="color: var(--blue-dark); font-weight: 700;">Assets page</a> once added.</p>
   </section>
 
   <section class="content-grid">
     <article class="panel">
       <div class="panel-header">
         <span>Open findings by severity</span>
-        <span class="muted">Priority snapshot</span>
+        <span class="muted">Click a severity to see those findings</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Severity</th><th>Count</th></tr>
-          </thead>
-          <tbody>
-            {% for row in severity_breakdown %}
-              <tr>
-                <td class="sev-{{ row.severity }}">{{ row.severity | title }}</td>
-                <td>{{ row.n }}</td>
-              </tr>
-            {% else %}
-              <tr><td colspan="2" class="empty">No findings yet.</td></tr>
+      {% if severity_breakdown %}
+        <div class="sev-bar">
+          {% for row in severity_breakdown %}
+            <a href="{{ url_for('findings', severity=row.severity) }}"
+               style="width: {{ (row.n / finding_count * 100) if finding_count else 0 }}%; background: var(--sev-{{ row.severity }}-dot, var(--soft));"
+               title="{{ row.n }} {{ row.severity }}"></a>
+          {% endfor %}
+        </div>
+        <div class="sev-legend">
+          {% for row in severity_breakdown %}
+            <a class="row" href="{{ url_for('findings', severity=row.severity) }}">
+              <span class="badge {{ row.severity }}">{{ row.severity | title }}</span>
+              <span class="n">{{ row.n }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">No findings yet. Run a scan to populate this.</p>
+      {% endif %}
+    </article>
+
+    <article class="panel gauge-card">
+      <div class="panel-header" style="width: 100%;">
+        <span>Overall health score</span>
+      </div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 200 120">
+          <path d="M14,104 A86,86 0 0 1 186,104" fill="none" stroke="var(--border)" stroke-width="16" stroke-linecap="round" pathLength="100"></path>
+          <path d="M14,104 A86,86 0 0 1 186,104" fill="none"
+                stroke="{% if health.score >= 75 %}var(--sev-low-dot){% elif health.score >= 40 %}var(--sev-medium-dot){% else %}var(--sev-critical-dot){% endif %}"
+                stroke-width="16" stroke-linecap="round" pathLength="100"
+                stroke-dasharray="{{ health.score }} {{ 100 - health.score }}"></path>
+        </svg>
+        <div class="gauge-value">
+          <div class="num">{{ health.score }}</div>
+          <span class="badge {% if health.score >= 75 %}low{% elif health.score >= 40 %}medium{% else %}critical{% endif %}">{{ health.grade }} &middot; {{ health.label }}</span>
+        </div>
+      </div>
+      <div class="gauge-scale"><span>0</span><span>100</span></div>
+      <p class="gauge-note">
+        {% if top_issues %}
+          Biggest drags on your score:
+          <span class="badge-row" style="justify-content:center; margin-top:0.4rem;">
+            {% for issue in top_issues %}
+              <a class="badge {{ issue.severity or 'low' }}" href="{{ url_for('findings', highlight=issue.id) }}#finding-{{ issue.id }}">{{ issue.domain or 'asset' }}</a>
             {% endfor %}
-          </tbody>
-        </table>
+          </span>
+        {% else %}
+          No findings are affecting your score right now.
+        {% endif %}
+      </p>
+    </article>
+  </section>
+
+  <section class="content-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <span>Top issues to review</span>
+        <span class="muted">Ranked by risk</span>
       </div>
+      {% if top_issues %}
+        <div class="issue-list">
+          {% for issue in top_issues %}
+            <a class="issue-row" href="{{ url_for('findings', highlight=issue.id) }}#finding-{{ issue.id }}">
+              <div class="who">
+                <strong>{{ issue.domain or 'Unnamed asset' }}</strong>
+                <span>{{ issue.finding_type | replace('_', ' ') | title }}{% if issue.cve_id %} &middot; {{ issue.cve_id }}{% endif %}</span>
+              </div>
+              <span class="badge {{ issue.severity or 'low' }}">{{ (issue.severity or 'unknown') | title }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">Nothing to review yet.</p>
+      {% endif %}
     </article>
 
     <article class="panel">
       <div class="panel-header">
-        <span>Recent scan runs</span>
-        <span class="muted">Latest activity</span>
+        <span>Recent scan activity</span>
+        <span class="muted">Last 5 runs</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>ID</th><th>Started</th><th>Status</th><th>Notes</th></tr>
-          </thead>
-          <tbody>
-            {% for scan in recent_scans %}
-              <tr>
-                <td>#{{ scan.id }}</td>
-                <td>{{ scan.started_at }}</td>
-                <td>{{ scan.status | title }}</td>
-                <td>{{ scan.notes or '—' }}</td>
-              </tr>
-            {% else %}
-              <tr><td colspan="4" class="empty">No scan runs yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      {% if recent_scans %}
+        {% set max_n = (recent_scans | map(attribute='finding_count') | max) or 1 %}
+        {% for scan in recent_scans %}
+          <div class="activity-row">
+            <div class="meta">
+              <span class="id">Run #{{ scan.id }}</span>
+              <span class="when"> &middot; {{ scan.started_at }} &middot; {{ scan.status | title }}</span>
+            </div>
+            <div class="activity-bar"><span style="width: {{ (scan.finding_count / max_n * 100) if max_n else 0 }}%;"></span></div>
+            <span class="muted" style="font-size:0.85rem;">{{ scan.finding_count }} found</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No scan runs yet.</p>
+      {% endif %}
     </article>
   </section>
 {% endblock %}

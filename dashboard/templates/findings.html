@@ -1,76 +1,126 @@
 {% extends "base.html" %}
 {% block title %}Findings{% endblock %}
+
+{% block extra_style %}
+    .finding-list { display: flex; flex-direction: column; gap: 0.85rem; }
+    .finding-card {
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--soft);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 1rem 1.15rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 1rem;
+    }
+    .finding-card.critical { border-left-color: var(--sev-critical-dot); }
+    .finding-card.high { border-left-color: var(--sev-high-dot); }
+    .finding-card.medium { border-left-color: var(--sev-medium-dot); }
+    .finding-card.low { border-left-color: var(--sev-low-dot); }
+    .finding-card.hl { background: var(--blue-tint); outline: 2px solid var(--blue); outline-offset: -1px; }
+
+    .finding-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;
+    }
+    .finding-title { font-weight: 700; font-size: 1.02rem; }
+    .finding-sub { color: var(--muted); font-size: 0.88rem; margin-top: 0.15rem; }
+    .finding-guidance {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 0.7rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid var(--border);
+    }
+    .finding-guidance div span.lbl {
+      display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 800; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .finding-guidance div p { margin: 0; line-height: 1.5; font-size: 0.92rem; }
+    .finding-meta { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.7rem; color: var(--soft); font-size: 0.82rem; }
+    @media (max-width: 720px) {
+      .finding-guidance { grid-template-columns: 1fr; }
+    }
+{% endblock %}
+
 {% block content %}
   <section class="hero compact">
     <div>
       <p class="eyebrow">Findings inventory</p>
       <h1>Open findings</h1>
-      <p class="subtle">Prioritize the most dangerous issues first. KEV-tagged and high severity items are highlighted.</p>
+      <p class="subtle">Sorted by risk so the most dangerous issues show up first. Each card explains why it matters and how to fix it.</p>
     </div>
   </section>
 
-  <div class="toolbar">
-    <div class="sort-links">
-      <a href="?sort=risk_score" class="{% if sort == 'risk_score' %}active{% endif %}">Risk score</a>
-      <a href="?sort=severity" class="{% if sort == 'severity' %}active{% endif %}">Severity</a>
-      <a href="?sort=discovered" class="{% if sort == 'discovered' %}active{% endif %}">Newest</a>
+  <div class="toolbar" style="flex-direction: column; align-items: stretch; gap: 0.6rem;">
+    <div class="chip-row">
+      <span class="muted" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">Severity</span>
+      <a class="chip {% if not severity_filter %}active{% endif %}" href="{{ url_for('findings', sort=sort, asset_id=asset_id) }}">All</a>
+      {% for sev in ['critical', 'high', 'medium', 'low'] %}
+        <a class="chip {% if severity_filter == sev %}active{% endif %}" href="{{ url_for('findings', sort=sort, severity=sev, asset_id=asset_id) }}">{{ sev | title }}</a>
+      {% endfor %}
     </div>
-    <span>Showing {{ findings|length }} open findings</span>
+    <div class="chip-row">
+      <span class="muted" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">Sort</span>
+      <a class="chip {% if sort == 'risk_score' %}active{% endif %}" href="{{ url_for('findings', sort='risk_score', severity=severity_filter, asset_id=asset_id) }}">Highest risk</a>
+      <a class="chip {% if sort == 'severity' %}active{% endif %}" href="{{ url_for('findings', sort='severity', severity=severity_filter, asset_id=asset_id) }}">Severity</a>
+      <a class="chip {% if sort == 'discovered' %}active{% endif %}" href="{{ url_for('findings', sort='discovered', severity=severity_filter, asset_id=asset_id) }}">Newest</a>
+      {% if asset_id %}
+        <a class="chip" href="{{ url_for('findings', sort=sort, severity=severity_filter) }}">Clear asset filter &times;</a>
+      {% endif %}
+    </div>
+    <span class="muted">Showing {{ findings|length }} open finding{{ '' if findings|length == 1 else 's' }}</span>
   </div>
 
-  <section class="panel">
-    <div class="panel-header">
-      <span>Findings table</span>
-      <span class="muted">Current sort: {{ sort }}</span>
+  {% if findings %}
+    <div class="finding-list">
+      {% for f in findings %}
+        <article id="finding-{{ f.id }}" class="finding-card {{ f.severity or 'low' }} {% if highlight and f.id == highlight %}hl{% endif %}">
+          <div class="finding-top">
+            <div>
+              <div class="finding-title">
+                {% if f.finding_type == 'cve' %}
+                  {{ f.cve_id }}
+                {% elif f.finding_type == 'open_port' %}
+                  Port {{ f.port }}{% if f.service %} &middot; {{ f.service }}{% endif %} open
+                {% elif f.finding_type == 'weak_tls' %}
+                  Weak TLS / encryption
+                {% else %}
+                  Configuration issue
+                {% endif %}
+              </div>
+              <div class="finding-sub">
+                {{ f.domain or 'Unnamed asset' }}{% if f.ip_address %} &middot; {{ f.ip_address }}{% endif %}
+              </div>
+            </div>
+            <div class="badge-row">
+              <span class="badge {{ f.severity or 'low' }}">{{ (f.severity or 'unknown') | title }}</span>
+              {% if f.kev_flag %}<span class="badge kev">Actively exploited</span>{% endif %}
+            </div>
+          </div>
+
+          {% if f.description %}<p class="finding-sub" style="margin-top:0.35rem;">{{ f.description }}</p>{% endif %}
+
+          <div class="finding-guidance">
+            <div>
+              <span class="lbl">Why it matters</span>
+              <p>{{ f.guidance.why }}</p>
+            </div>
+            <div>
+              <span class="lbl">How to fix it</span>
+              <p>{{ f.guidance.fix }}</p>
+            </div>
+          </div>
+
+          <div class="finding-meta">
+            <span>Risk score {{ '%.1f'|format(f.risk_score) if f.risk_score is not none else '—' }} / 10</span>
+            {% if f.cvss_score is not none %}<span>CVSS {{ '%.1f'|format(f.cvss_score) }}</span>{% endif %}
+            <span>Found {{ f.discovered_at }}</span>
+          </div>
+        </article>
+      {% endfor %}
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Asset</th>
-            <th>Type</th>
-            <th>Port / Service</th>
-            <th>CVE</th>
-            <th>CVSS</th>
-            <th>Risk</th>
-            <th>Severity</th>
-            <th>Description</th>
-            <th>Discovered</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for f in findings %}
-            <tr>
-              <td>#{{ f.id }}</td>
-              <td>
-                <strong>{{ f.domain or '—' }}</strong>
-                {% if f.ip_address %}<br><span class="subtle">{{ f.ip_address }}</span>{% endif %}
-              </td>
-              <td>{{ f.finding_type }}</td>
-              <td>
-                {% if f.port %}{{ f.port }}{% endif %}
-                {% if f.service %} / {{ f.service }}{% endif %}
-              </td>
-              <td>
-                <div class="badge-row">
-                  {% if f.cve_id %}<span class="badge">{{ f.cve_id }}</span>{% endif %}
-                  {% if f.kev_flag %}<span class="badge kev">KEV</span>{% endif %}
-                </div>
-              </td>
-              <td>{{ '%.1f'|format(f.cvss_score) if f.cvss_score is not none else '—' }}</td>
-              <td>{{ '%.2f'|format(f.risk_score) if f.risk_score is not none else '—' }}</td>
-              <td>
-                <span class="badge {{ f.severity or 'low' }}">{{ (f.severity or 'unknown') | title }}</span>
-              </td>
-              <td>{{ f.description or '—' }}</td>
-              <td>{{ f.discovered_at }}</td>
-            </tr>
-          {% else %}
-            <tr><td colspan="10" class="empty">No open findings.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
+  {% else %}
+    <section class="panel"><p class="empty">No open findings match this filter.</p></section>
+  {% endif %}
 {% endblock %}
