@@ -83,10 +83,6 @@ def run_nuclei(asset: dict, timeout: float = 900) -> list[dict]:
             targets = Path(tmp) / "targets.txt"
             targets.write_text("\n".join(urls) + "\n")
             res = run_tool(
-                # DEMO ONLY: the "-tags","tech","-severity",... args make nuclei
-                # emit info-level tech-detection findings so you can SEE the
-                # pipeline produce rows. Remove them for production so nuclei
-                # runs its full vulnerability template set.
                 ["nuclei", "-l", str(targets), "-jsonl", "-silent"],
                 timeout=timeout,
             )
