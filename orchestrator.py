@@ -45,7 +45,7 @@ def _get_db_connection() -> sqlite3.Connection:
 def _start_scan_run(conn: sqlite3.Connection) -> int:
     cur = conn.execute(
         "INSERT INTO scan_runs (started_at, status) VALUES (?, ?)",
-        (datetime.now(timezone.utc).isoformat(), "running"),
+        (datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), "running"),
     )
     conn.commit()
     return cur.lastrowid
@@ -54,7 +54,7 @@ def _start_scan_run(conn: sqlite3.Connection) -> int:
 def _finish_scan_run(conn: sqlite3.Connection, run_id: int, status: str) -> None:
     conn.execute(
         "UPDATE scan_runs SET finished_at = ?, status = ? WHERE id = ?",
-        (datetime.now(timezone.utc).isoformat(), status, run_id),
+        (datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), status, run_id),
     )
     conn.commit()
 
@@ -254,4 +254,3 @@ def run_scan_cycle() -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     run_scan_cycle()
-    
