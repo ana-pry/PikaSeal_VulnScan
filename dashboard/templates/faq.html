@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}FAQ{% endblock %}
+
+{% block extra_style %}
+    .faq-list { display: flex; flex-direction: column; gap: 10px; }
+    .faq-item { border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .faq-item summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding: 16px 18px; cursor: pointer; list-style: none;
+      font-family: var(--font-heading); font-weight: 600; font-size: 16px; color: var(--text);
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary .chevron { flex: none; transition: transform 180ms ease; }
+    .faq-item[open] summary .chevron { transform: rotate(180deg); }
+    .faq-item .answer { margin: 0; padding: 0 18px 18px; color: var(--neutral-300); font-size: 14px; line-height: 1.6; max-width: 680px; }
+{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <h1>Frequently asked questions</h1>
+    <p class="subtle">Plain answers for small businesses and non-profits getting started with PikaSeal. Still stuck? Reach out to your IT contact or web host with the finding you're looking at.</p>
+  </section>
+
+  <div class="faq-list">
+    {% for item in faq %}
+      <details class="faq-item">
+        <summary>
+          <span>{{ item.q }}</span>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-300)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </summary>
+        <p class="answer">{{ item.a }}</p>
+      </details>
+    {% endfor %}
+  </div>
+{% endblock %}

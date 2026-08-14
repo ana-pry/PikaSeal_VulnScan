@@ -2,114 +2,100 @@
 {% block title %}Findings{% endblock %}
 
 {% block extra_style %}
-    .finding-list { display: flex; flex-direction: column; gap: 0.85rem; }
-    .finding-card {
-      border: 1px solid var(--border);
-      border-left: 5px solid var(--soft);
-      border-radius: 16px;
-      background: var(--surface);
-      padding: 1rem 1.15rem;
-      box-shadow: var(--shadow-sm);
-      scroll-margin-top: 1rem;
-    }
-    .finding-card.critical { border-left-color: var(--sev-critical-dot); }
-    .finding-card.high { border-left-color: var(--sev-high-dot); }
-    .finding-card.medium { border-left-color: var(--sev-medium-dot); }
-    .finding-card.low { border-left-color: var(--sev-low-dot); }
-    .finding-card.hl { background: var(--blue-tint); outline: 2px solid var(--blue); outline-offset: -1px; }
+    .search-wrap { position: relative; margin-bottom: 14px; }
+    .search-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); }
+    .search-wrap input { padding-left: 38px; min-height: 44px; font-size: 15px; }
+    .filters { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
 
-    .finding-top {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;
+    .finding-list { display: flex; flex-direction: column; gap: 12px; }
+    .finding-card {
+      border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-sm);
+      border-left: 4px solid var(--sev-none); padding: 16px 18px; scroll-margin-top: 1rem;
     }
-    .finding-title { font-weight: 700; font-size: 1.02rem; }
-    .finding-sub { color: var(--muted); font-size: 0.88rem; margin-top: 0.15rem; }
+    .finding-card.critical { border-left-color: var(--sev-critical); }
+    .finding-card.high { border-left-color: var(--sev-high); }
+    .finding-card.medium { border-left-color: var(--sev-medium); }
+    .finding-card.low { border-left-color: var(--sev-low); }
+    .finding-card.hl { box-shadow: var(--shadow-sm), 0 0 0 2px var(--accent); }
+
+    .finding-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+    .finding-title { font-family: var(--font-heading); font-weight: 600; font-size: 17px; }
+    .finding-sub { color: var(--neutral-400); font-size: 13px; margin-top: 2px; }
+    .finding-desc { color: var(--neutral-300); font-size: 13px; line-height: 1.55; margin: 10px 0 0; }
     .finding-guidance {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-      margin-top: 0.7rem;
-      padding-top: 0.7rem;
-      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--divider);
     }
-    .finding-guidance div span.lbl {
-      display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
-      font-weight: 800; color: var(--muted); margin-bottom: 0.2rem;
+    .finding-guidance .lbl {
+      display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      font-weight: 700; color: var(--neutral-400); margin-bottom: 4px;
     }
-    .finding-guidance div p { margin: 0; line-height: 1.5; font-size: 0.92rem; }
-    .finding-meta { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.7rem; color: var(--soft); font-size: 0.82rem; }
-    @media (max-width: 720px) {
-      .finding-guidance { grid-template-columns: 1fr; }
-    }
+    .finding-guidance p { margin: 0; font-size: 13px; line-height: 1.55; }
+    .finding-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; color: var(--neutral-500); font-size: 12px; }
+    @media (max-width: 720px) { .finding-guidance { grid-template-columns: 1fr; } }
 {% endblock %}
 
 {% block content %}
-  <section class="hero compact">
-    <div>
-      <p class="eyebrow">Findings inventory</p>
-      <h1>Open findings</h1>
-      <p class="subtle">Sorted by risk so the most dangerous issues show up first. Each card explains why it matters and how to fix it.</p>
-    </div>
-  </section>
+  <section class="hero"><h1>Open findings</h1></section>
 
-  <div class="toolbar" style="flex-direction: column; align-items: stretch; gap: 0.6rem;">
-    <div class="chip-row">
-      <span class="muted" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">Severity</span>
-      <a class="chip {% if not severity_filter %}active{% endif %}" href="{{ url_for('findings', sort=sort, asset_id=asset_id) }}">All</a>
-      {% for sev in ['critical', 'high', 'medium', 'low'] %}
-        <a class="chip {% if severity_filter == sev %}active{% endif %}" href="{{ url_for('findings', sort=sort, severity=sev, asset_id=asset_id) }}">{{ sev | title }}</a>
-      {% endfor %}
-    </div>
-    <div class="chip-row">
-      <span class="muted" style="font-size:0.82rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">Sort</span>
-      <a class="chip {% if sort == 'risk_score' %}active{% endif %}" href="{{ url_for('findings', sort='risk_score', severity=severity_filter, asset_id=asset_id) }}">Highest risk</a>
-      <a class="chip {% if sort == 'severity' %}active{% endif %}" href="{{ url_for('findings', sort='severity', severity=severity_filter, asset_id=asset_id) }}">Severity</a>
-      <a class="chip {% if sort == 'discovered' %}active{% endif %}" href="{{ url_for('findings', sort='discovered', severity=severity_filter, asset_id=asset_id) }}">Newest</a>
-      {% if asset_id %}
-        <a class="chip" href="{{ url_for('findings', sort=sort, severity=severity_filter) }}">Clear asset filter &times;</a>
-      {% endif %}
-    </div>
-    <span class="muted">Showing {{ findings|length }} open finding{{ '' if findings|length == 1 else 's' }}</span>
+  <div class="search-wrap">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-500)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+    <input id="finding-search" class="input" type="text" placeholder="Search findings by title, asset or IP" autocomplete="off">
   </div>
 
+  <form class="filters" method="get" id="filter-form">
+    {% if asset_id %}<input type="hidden" name="asset_id" value="{{ asset_id }}">{% endif %}
+    <div class="field" style="min-width:190px;">
+      <label>Severity</label>
+      <select class="input" name="severity" onchange="document.getElementById('filter-form').submit()">
+        <option value="" {% if not severity_filter %}selected{% endif %}>All severities</option>
+        {% for sev in ['critical', 'high', 'medium', 'low'] %}
+          <option value="{{ sev }}" {% if severity_filter == sev %}selected{% endif %}>{{ sev | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="min-width:190px;">
+      <label>Sort</label>
+      <select class="input" name="sort" onchange="document.getElementById('filter-form').submit()">
+        <option value="risk_score" {% if sort == 'risk_score' %}selected{% endif %}>Highest risk</option>
+        <option value="severity" {% if sort == 'severity' %}selected{% endif %}>Severity</option>
+        <option value="discovered" {% if sort == 'discovered' %}selected{% endif %}>Newest</option>
+      </select>
+    </div>
+    <span class="muted" style="font-size:13px; margin-bottom:8px;">
+      Showing <span id="finding-count">{{ findings|length }}</span> open finding{{ '' if findings|length == 1 else 's' }}
+      {% if asset_id %}&middot; <a href="{{ url_for('findings', sort=sort, severity=severity_filter) }}">clear asset filter &times;</a>{% endif %}
+    </span>
+  </form>
+
   {% if findings %}
-    <div class="finding-list">
+    <div class="finding-list" id="finding-list">
       {% for f in findings %}
-        <article id="finding-{{ f.id }}" class="finding-card {{ f.severity or 'low' }} {% if highlight and f.id == highlight %}hl{% endif %}">
+        {% set title = f.cve_id if f.finding_type == 'cve' else ('Port ' ~ f.port ~ ' open' if f.finding_type == 'open_port' else ('Weak TLS / encryption' if f.finding_type == 'weak_tls' else 'Configuration issue')) %}
+        <article id="finding-{{ f.id }}"
+                 class="finding-card {{ f.severity or 'none' }} {% if highlight and f.id == highlight %}hl{% endif %}"
+                 data-search="{{ (title ~ ' ' ~ (f.domain or '') ~ ' ' ~ (f.ip_address or '')) | lower }}">
           <div class="finding-top">
-            <div>
+            <div style="min-width:0;">
               <div class="finding-title">
-                {% if f.finding_type == 'cve' %}
-                  {{ f.cve_id }}
-                {% elif f.finding_type == 'open_port' %}
-                  Port {{ f.port }}{% if f.service %} &middot; {{ f.service }}{% endif %} open
-                {% elif f.finding_type == 'weak_tls' %}
-                  Weak TLS / encryption
-                {% else %}
-                  Configuration issue
-                {% endif %}
+                {% if f.finding_type == 'open_port' %}Port {{ f.port }}{% if f.service %} &middot; {{ f.service }}{% endif %} open
+                {% elif f.finding_type == 'cve' %}{{ f.cve_id }}
+                {% elif f.finding_type == 'weak_tls' %}Weak TLS / encryption
+                {% else %}Configuration issue{% endif %}
               </div>
-              <div class="finding-sub">
-                {{ f.domain or 'Unnamed asset' }}{% if f.ip_address %} &middot; {{ f.ip_address }}{% endif %}
-              </div>
+              <div class="finding-sub">{{ f.domain or 'Unnamed asset' }}{% if f.ip_address %} &middot; {{ f.ip_address }}{% endif %}</div>
             </div>
             <div class="badge-row">
-              <span class="badge {{ f.severity or 'low' }}">{{ (f.severity or 'unknown') | title }}</span>
+              <span class="badge {{ f.severity or 'none' }}">{{ (f.severity or 'None') | title }}</span>
               {% if f.kev_flag %}<span class="badge kev">Actively exploited</span>{% endif %}
             </div>
           </div>
 
-          {% if f.description %}<p class="finding-sub" style="margin-top:0.35rem;">{{ f.description }}</p>{% endif %}
+          {% if f.description %}<p class="finding-desc">{{ f.description }}</p>{% endif %}
 
           <div class="finding-guidance">
-            <div>
-              <span class="lbl">Why it matters</span>
-              <p>{{ f.guidance.why }}</p>
-            </div>
-            <div>
-              <span class="lbl">How to fix it</span>
-              <p>{{ f.guidance.fix }}</p>
-            </div>
+            <div><span class="lbl">Why it matters</span><p>{{ f.guidance.why }}</p></div>
+            <div><span class="lbl">How to fix it</span><p>{{ f.guidance.fix }}</p></div>
           </div>
 
           <div class="finding-meta">
@@ -120,7 +106,29 @@
         </article>
       {% endfor %}
     </div>
+    <div class="panel" id="no-match" style="display:none; text-align:center; color:var(--neutral-400);">No findings match your search.</div>
   {% else %}
     <section class="panel"><p class="empty">No open findings match this filter.</p></section>
   {% endif %}
+
+  <script>
+    (function () {
+      var box = document.getElementById('finding-search');
+      if (!box) return;
+      var cards = Array.prototype.slice.call(document.querySelectorAll('#finding-list .finding-card'));
+      var count = document.getElementById('finding-count');
+      var noMatch = document.getElementById('no-match');
+      box.addEventListener('input', function () {
+        var q = box.value.trim().toLowerCase();
+        var shown = 0;
+        cards.forEach(function (c) {
+          var hit = !q || c.getAttribute('data-search').indexOf(q) !== -1;
+          c.style.display = hit ? '' : 'none';
+          if (hit) shown++;
+        });
+        if (count) count.textContent = shown;
+        if (noMatch) noMatch.style.display = shown === 0 ? 'block' : 'none';
+      });
+    })();
+  </script>
 {% endblock %}

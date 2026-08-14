@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Scans{% endblock %}
+
+{% block extra_style %}
+    .scan-launch { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 20px; }
+    .scan-launch .copy { min-width: 0; max-width: 560px; }
+    .scan-launch .copy h2 { font-family: var(--font-heading); font-weight: 600; font-size: 17px; margin: 0 0 6px; }
+    .scan-launch .copy p { color: var(--neutral-300); font-size: 13px; line-height: 1.55; margin: 0; }
+    .running-note { display: inline-flex; align-items: center; gap: 8px; color: var(--sev-medium); font-size: 13px; font-weight: 600; margin-top: 12px; }
+    .spinner {
+      width: 13px; height: 13px; border-radius: 50%; flex: none;
+      border: 2px solid color-mix(in srgb, var(--sev-medium) 35%, transparent);
+      border-top-color: var(--sev-medium); animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .run-list { display: flex; flex-direction: column; gap: 10px; }
+    .run-card {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      padding: 14px 18px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-sm);
+    }
+    .run-who strong { display: block; font-size: 15px; }
+    .run-who span { color: var(--neutral-400); font-size: 13px; }
+    .run-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .run-count { color: var(--neutral-300); font-size: 13px; white-space: nowrap; }
+    .badge.completed { background: color-mix(in srgb, var(--sev-low) 18%, transparent); color: var(--sev-low); }
+    .badge.running   { background: color-mix(in srgb, var(--sev-medium) 18%, transparent); color: var(--sev-medium); }
+    .badge.failed    { background: color-mix(in srgb, var(--sev-critical) 18%, transparent); color: var(--sev-critical); }
+{% endblock %}
+
+{% block content %}
+  <section class="hero"><h1>Scans</h1></section>
+
+  <section class="panel">
+    <div class="scan-launch">
+      <div class="copy">
+        <h2>Run a scan now</h2>
+        <p>This checks every asset you've authorized for scanning — discovering exposed services, testing them for known weaknesses, and ranking whatever it finds by real-world risk. A run usually takes a few minutes; you can leave this page and come back.</p>
+        {% if scan_running %}
+          <div class="running-note"><span class="spinner"></span> A scan is in progress — this page refreshes itself as it works.</div>
+        {% endif %}
+      </div>
+      <form action="{{ url_for('run_scan') }}" method="post" class="inline-form">
+        <button type="submit" class="btn btn-primary" {% if scan_running %}disabled{% endif %}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          {% if scan_running %}Scanning…{% else %}Run scan{% endif %}
+        </button>
+      </form>
+    </div>
+    <p class="muted" style="font-size:13px; margin:0;">
+      {{ authorized_count }} asset{{ '' if authorized_count == 1 else 's' }} authorized for scanning.
+      {% if authorized_count == 0 %}Mark an asset as authorized on the <a href="{{ url_for('assets') }}">Assets</a> page to enable scanning.{% endif %}
+    </p>
+  </section>
+
+  <section class="panel" style="margin-top:20px;">
+    <div class="panel-header"><span class="title">Scan history</span><span class="muted">Last 25 runs</span></div>
+    {% if scan_runs %}
+      <div class="run-list">
+        {% for scan in scan_runs %}
+          <div class="run-card">
+            <div class="run-who">
+              <strong>Run #{{ scan.id }}</strong>
+              <span>Started {{ scan.started_at or '—' }}{% if scan.finished_at %} · finished {{ scan.finished_at }}{% endif %}</span>
+            </div>
+            <div class="run-right">
+              <span class="run-count">{{ scan.finding_count }} finding{{ '' if scan.finding_count == 1 else 's' }}</span>
+              {% if scan.finding_count %}
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('findings') }}">View</a>
+              {% endif %}
+              <span class="badge {{ scan.status }}">{{ scan.status | title }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty" style="padding:14px;">No scans have run yet. Press <strong>Run scan</strong> above to start one.</p>
+    {% endif %}
+  </section>
+
+  {% if scan_running %}
+    <script>setTimeout(function () { location.reload(); }, 6000);</script>
+  {% endif %}
+{% endblock %}

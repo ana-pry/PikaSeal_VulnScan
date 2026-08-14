@@ -2,44 +2,72 @@
 {% block title %}Assets{% endblock %}
 
 {% block extra_style %}
-    .asset-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .asset-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .tool-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .tool-head .icon {
+      width: 30px; height: 30px; flex: none; border-radius: 8px;
+      background: var(--accent-900); color: var(--accent-300);
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .tool-head strong { font-family: var(--font-heading); font-weight: 600; font-size: 16px; }
+    .tool-p { color: var(--neutral-300); font-size: 13px; line-height: 1.55; margin: 0 0 12px; }
+    .file-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .file-name { color: var(--neutral-500); font-size: 13px; }
+    .check { display: inline-flex; align-items: center; gap: 7px; color: var(--neutral-300); font-size: 13px; margin-top: 12px; cursor: pointer; }
+    .add-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .asset-list { display: flex; flex-direction: column; gap: 10px; }
     .asset-card {
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      padding: 0.9rem 1.1rem; border: 1px solid var(--border); border-radius: 16px;
-      background: var(--surface); flex-wrap: wrap;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      padding: 14px 18px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-sm);
     }
     .asset-who { min-width: 0; }
-    .asset-who strong { display: block; font-size: 0.98rem; }
-    .asset-who span { color: var(--muted); font-size: 0.85rem; }
-    .asset-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .asset-who strong { display: block; font-size: 15px; }
+    .asset-who span { color: var(--neutral-400); font-size: 13px; }
+    .asset-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .inline-form { display: inline; margin: 0; }
+    @media (max-width: 760px) { .asset-tools { grid-template-columns: 1fr; } }
 {% endblock %}
 
 {% block content %}
-  <section class="hero compact">
-    <div>
-      <p class="eyebrow">Discovered attack surface</p>
-      <h1>Tracked assets</h1>
-      <p class="subtle">Every domain, subdomain, and IP found for your business, with how many open issues each one has.</p>
-    </div>
-  </section>
+  <section class="hero"><h1>Tracked assets</h1></section>
 
   {% if added %}
-    <section class="callout" style="margin-bottom: 1.1rem; background: var(--sage-tint);">
-      <div class="icon" style="color: var(--sev-low-text);">&check;</div>
-      <div>
-        <strong>{{ added }} added</strong>
-        <p>It's now tracked but marked "Not authorized" below, since only you can confirm you're allowed to scan it.</p>
-      </div>
-    </section>
+    <div class="flashes"><div class="flash ok"><strong>{{ added }} added.</strong> It's tracked but marked "Not authorized" below — only you can confirm you're allowed to scan it.</div></div>
   {% endif %}
 
-  <section class="callout" style="margin-bottom: 1.1rem;">
-    <div class="icon">+</div>
-    <div>
-      <strong>Adding a new target</strong>
-      <p>Add a website from the <a href="{{ url_for('overview') }}" style="color: var(--blue-dark); font-weight: 700;">Overview page</a>, or list root domains in <code>config.yaml</code> so scheduled scans can discover their subdomains automatically. Either way, new assets stay "Not authorized" until someone confirms you're allowed to scan them, only authorized assets are actively probed.</p>
-    </div>
-  </section>
+  <div class="asset-tools">
+    <section class="panel">
+      <div class="tool-head">
+        <span class="icon">+</span>
+        <strong>Import your assets from a CSV</strong>
+      </div>
+      <p class="tool-p">Export a list from Excel or Google Sheets (a <code>domain</code> column is all you need) and upload it here. New assets stay "Not authorized" until someone confirms you're allowed to scan them.</p>
+      <form action="{{ url_for('import_assets') }}" method="post" enctype="multipart/form-data">
+        <div class="file-row">
+          <label class="btn btn-secondary" style="cursor:pointer;">
+            Choose file
+            <input type="file" name="file" accept=".csv,text/csv" required hidden onchange="document.getElementById('csv-name').textContent = this.files.length ? this.files[0].name : 'No file chosen'">
+          </label>
+          <span class="file-name" id="csv-name">No file chosen</span>
+        </div>
+        <label class="check"><input type="checkbox" name="authorize"> Authorize imported assets for scanning</label>
+        <button type="submit" class="btn btn-primary btn-block">Import CSV</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header" style="margin-bottom:10px;">
+        <strong style="font-family:var(--font-heading); font-weight:600; font-size:16px;">Add a website to track</strong>
+        <span class="muted" style="font-size:12px;">Authorize before scanning</span>
+      </div>
+      <form class="add-row" action="{{ url_for('add_asset') }}" method="post">
+        <input class="input" type="text" name="domain" placeholder="yourbusiness.com" autocomplete="off" style="flex:1 1 200px; min-height:40px;" required>
+        <button type="submit" class="btn btn-primary">Add target</button>
+      </form>
+      <p class="tool-p" style="margin:12px 0 0;">Enter just the domain, no "https://" needed. It'll show up in the list below once added.</p>
+    </section>
+  </div>
 
   {% if assets %}
     <div class="asset-list">
@@ -47,14 +75,11 @@
         <div class="asset-card">
           <div class="asset-who">
             <strong>{{ a.domain }}</strong>
-            <span>
-              {{ a.asset_type | title }}{% if a.ip_address %} &middot; {{ a.ip_address }}{% endif %}
-              &middot; Last seen {{ a.last_seen }}
-            </span>
+            <span>{{ a.asset_type | title }}{% if a.ip_address %} &middot; {{ a.ip_address }}{% endif %} &middot; Last seen {{ a.last_seen }}</span>
           </div>
           <div class="asset-right">
             <span class="badge {% if a.authorized %}low{% else %}medium{% endif %}">{{ 'Authorized' if a.authorized else 'Not authorized' }}</span>
-            <span class="badge info">{{ a.status | title }}</span>
+            <span class="tag tag-accent">{{ a.status | title }}</span>
             {% if a.open_findings %}
               <a class="badge {% if a.critical_findings %}critical{% else %}medium{% endif %}" href="{{ url_for('findings', asset_id=a.id) }}">
                 {{ a.open_findings }} open finding{{ '' if a.open_findings == 1 else 's' }}
@@ -62,11 +87,15 @@
             {% else %}
               <span class="badge low">No open findings</span>
             {% endif %}
+            <form class="inline-form" action="{{ url_for('set_authorization', asset_id=a.id) }}" method="post">
+              <input type="hidden" name="to" value="{{ 0 if a.authorized else 1 }}">
+              <button type="submit" class="btn btn-secondary btn-sm">{{ 'Remove from scope' if a.authorized else 'Add to scope' }}</button>
+            </form>
           </div>
         </div>
       {% endfor %}
     </div>
   {% else %}
-    <section class="panel"><p class="empty">No assets discovered yet. Add a root domain to config.yaml and run a scan.</p></section>
+    <section class="panel"><p class="empty">No assets tracked yet. Import a CSV or add a website above.</p></section>
   {% endif %}
 {% endblock %}
